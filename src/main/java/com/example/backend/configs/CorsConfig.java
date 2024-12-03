@@ -17,4 +17,6 @@ public class CorsConfig implements WebFluxConfigurer {
                 .allowedHeaders("*")
                 .allowCredentials(true);
     }
+
+
 }
