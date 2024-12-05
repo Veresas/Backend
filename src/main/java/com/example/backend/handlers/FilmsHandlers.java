@@ -10,6 +10,8 @@ import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.List;
+
 @Component
 public class FilmsHandlers {
 
@@ -24,5 +26,15 @@ public class FilmsHandlers {
                 .ok()
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(filmsList, Movies.class);
+    }
+
+    public Mono<ServerResponse> filmList (ServerRequest request){
+        return filmsService.findAllFilms()
+                .collectList()
+                .flatMap( films -> ServerResponse.ok()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .bodyValue(films)
+                )
+                .switchIfEmpty(ServerResponse.notFound().build());
     }
 }
