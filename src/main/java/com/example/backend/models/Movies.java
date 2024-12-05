@@ -18,8 +18,8 @@ public class Movies {
     @Id
     private ObjectId id;
     private String title;
-    private String posterUrl;
-    private double rating;
-    private String description;
-    private int releaseYear;
+    private String poster;
+    //private double rating;
+    //private String description;
+    //private int releaseYear;
 }

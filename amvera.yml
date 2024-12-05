@@ -1,0 +1,16 @@
+meta:
+  environment: jvm
+  toolchain:
+    name: maven
+    version: 3.9.5
+  jvm:
+    version: 23
+build:
+  artifacts:
+    target/main.jar: /
+  args: >-
+    clean package spring-boot:repackage
+run:
+  jarName: main.jar
+  persistenceMount: /data
+  containerPort: "80"
