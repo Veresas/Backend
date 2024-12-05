@@ -2,11 +2,14 @@ meta:
   environment: jvm
   toolchain:
     name: maven
-    version: 17
+    version: 3.9.5
+  jvm:
+    version: 23
 build:
   artifacts:
-    build/libs/*.jar: /
-  args: spring-boot:repackage
+    target/main.jar: /
+  args: >-
+    clean package spring-boot:repackage
 run:
   jarName: main.jar
   persistenceMount: /data
