@@ -4,18 +4,26 @@ import com.example.backend.models.Movies;
 import com.example.backend.services.FilmsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.core.io.Resource;
+import org.springframework.http.codec.multipart.FormFieldPart;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.List;
+import java.util.UUID;
 
 @Component
 public class FilmsHandlers {
@@ -51,5 +59,51 @@ public class FilmsHandlers {
                 .contentType(MediaType.IMAGE_JPEG) // Или другой подходящий тип
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + posterPath + "\"")
                 .body(Mono.just(resource), Resource.class);
+    }
+
+    public Mono<ServerResponse> addFilmsDescrip (ServerRequest request){
+        return request.bodyToMono(Movies.class)
+                .flatMap(film -> filmsService.save(film)
+                        .flatMap(savedFilm -> ServerResponse.ok()
+                                .bodyValue("User registered successfully"))
+                );
+    }
+
+    public Mono<ServerResponse> addFile (ServerRequest request){
+    return request.multipartData().flatMap(parts -> {
+        var fileName = UUID.randomUUID().toString();
+        var title = ((FormFieldPart) parts.getFirst("title"));
+        var photoPart = parts.get("photo").get(0); // берём первый файл с ключом "photo"
+        var videoPart = parts.get("video").get(0); // берём первый файл с ключом "video"
+
+        // Обрабатываем текст
+        Mono<Void> saveOnBd = title.content()
+                .map(dataBuffer -> dataBuffer.toString(StandardCharsets.UTF_8))
+                .reduce(String::concat)
+                .flatMap(t -> filmsService.save(new Movies(null, t.toString(), fileName))
+                        .then());
+
+        // Сохраняем фото
+        Mono<Void> savePhoto = saveFile(photoPart.content(), fileName + ".jpg", true);
+
+        // Сохраняем видео
+        Mono<Void> saveVideo = saveFile(videoPart.content(), fileName + ".mp4", false);
+
+
+        return Mono.when(saveOnBd, savePhoto, saveVideo)
+                .then(ServerResponse.ok().bodyValue("Files uploaded successfully"));
+    });
+    }
+
+    private Mono<Void> saveFile(Flux<DataBuffer> dataBufferFlux, String fileName, Boolean isPhoto) {
+        if(isPhoto){
+            fileName = "./sources/posters/" + fileName;
+        } else {
+            fileName = "./sources/films/" + fileName;
+        }
+        Path filePath = Paths.get(fileName);
+        return DataBufferUtils.write(dataBufferFlux, filePath, StandardOpenOption.CREATE, StandardOpenOption.WRITE)
+                .doOnError(e -> System.err.println("Error saving file: " + e.getMessage())) // Логируем ошибки
+                .then();
     }
 }

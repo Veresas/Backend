@@ -14,7 +14,11 @@ public class UserService {
     @Autowired
     private UserRep userRep;
 
-    public Mono<Users> findByUserName(String name){
+    public Mono<Users> findByName(String name){
         return userRep.findByName(name);
+    }
+
+    public Mono<Users> save(Users users){
+        return userRep.save(users);
     }
 }

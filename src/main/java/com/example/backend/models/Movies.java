@@ -22,8 +22,8 @@ public class Movies {
     private ObjectId id;
     private String title;
     private String poster;
+    //private String file;
     //private double rating;
     //private String description;
     //private int releaseYear;
-
 }

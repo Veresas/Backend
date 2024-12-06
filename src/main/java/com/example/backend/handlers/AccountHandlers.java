@@ -2,6 +2,7 @@ package com.example.backend.handlers;
 
 import com.example.backend.DAO.UserRep;
 import com.example.backend.models.Users;
+import com.example.backend.services.UserService;
 import com.example.backend.utilites.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -20,10 +21,10 @@ public class AccountHandlers {
 
     private final JwtUtil jwtUtil;
     private final PasswordEncoder passwordEncoder;
-    private final UserRep userRepository;
+    private final UserService userRepository;
 
     @Autowired // Добавлена аннотация @Autowired
-    public AccountHandlers(UserRep userRepository, JwtUtil jwtUtil, PasswordEncoder passwordEncoder) {
+    public AccountHandlers(UserService userRepository, JwtUtil jwtUtil, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.jwtUtil = jwtUtil;
         this.passwordEncoder = passwordEncoder;

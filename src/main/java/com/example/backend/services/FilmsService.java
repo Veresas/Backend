@@ -5,6 +5,7 @@ import com.example.backend.models.Movies;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 @Service
 public class FilmsService {
@@ -14,5 +15,9 @@ public class FilmsService {
 
     public Flux<Movies> findAllFilms(){
         return filmRep.findAll();
+    }
+
+    public Mono<Void> save(Movies movies){
+        return  filmRep.save(movies).then();
     }
 }
