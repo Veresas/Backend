@@ -31,7 +31,7 @@ public class SecurityConfig{
                 .securityContextRepository(new JwtSecurityContextRepository(jwtAuthenticationManager)) // Настраиваем репозиторий
                 .authorizeExchange(exchanges -> exchanges
                         .pathMatchers(HttpMethod.OPTIONS).permitAll()
-                        .pathMatchers("/", "/acc/reg", "/acc/login", "/Films").permitAll() // Разрешить доступ без аутентификации
+                        .pathMatchers("/", "/acc/**", "/films/**").permitAll() // Разрешить доступ без аутентификации
                         .anyExchange().authenticated()
                 )
                 .formLogin(ServerHttpSecurity.FormLoginSpec::disable)

@@ -9,6 +9,9 @@ import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 
 @Data
 @NoArgsConstructor
@@ -22,4 +25,5 @@ public class Movies {
     //private double rating;
     //private String description;
     //private int releaseYear;
+
 }

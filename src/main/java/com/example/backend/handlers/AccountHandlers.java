@@ -1,7 +1,6 @@
 package com.example.backend.handlers;
 
 import com.example.backend.DAO.UserRep;
-import com.example.backend.models.AuthRequest;
 import com.example.backend.models.Users;
 import com.example.backend.utilites.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,11 +30,11 @@ public class AccountHandlers {
     }
 
     public Mono<ServerResponse> login(ServerRequest request) {
-        return request.bodyToMono(AuthRequest.class)
-                .flatMap(authRequest ->
-                        userRepository.findByName(authRequest.getName())
+        return request.bodyToMono(Users.class)
+                .flatMap(users ->
+                        userRepository.findByName(users.getName())
                                 .flatMap(user -> {
-                                    if (passwordEncoder.matches(authRequest.getPassword(), user.getPassword())) {
+                                    if (passwordEncoder.matches(users.getPassword(), user.getPassword())) {
                                         String token = jwtUtil.generateToken(user.getName());
                                         Map<String, String> responseBody = new HashMap<>();
                                         responseBody.put("token", token);
@@ -53,13 +52,13 @@ public class AccountHandlers {
     }
 
     public Mono<ServerResponse> register(ServerRequest request) {
-        return request.bodyToMono(AuthRequest.class)
-                .flatMap(authRequest -> userRepository.findByName(authRequest.getName())
+        return request.bodyToMono(Users.class)
+                .flatMap(users -> userRepository.findByName(users.getName())
                         .flatMap(existingUser -> ServerResponse.status(409).bodyValue("User already exists"))
                         .switchIfEmpty(
                                 userRepository.save(new Users(null,
-                                                authRequest.getName(),
-                                                passwordEncoder.encode(authRequest.getPassword()),
+                                                users.getName(),
+                                                passwordEncoder.encode(users.getPassword()),
                                                 null))
                                         .flatMap(savedUser -> ServerResponse.ok()
                                                 .bodyValue("User registered successfully"))

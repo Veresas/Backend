@@ -15,8 +15,10 @@ public class MainWebController {
     @Bean
     public RouterFunction<ServerResponse> filmRout(FilmsHandlers filmsHandlers){
         return RouterFunctions
-                .route(GET("/Films"), filmsHandlers::hello)
-                .andRoute(GET("/filmList"), filmsHandlers::filmList);
+
+                .route(GET("/films"), filmsHandlers::curentFilm)
+                .andRoute(GET("/films/filmList"), filmsHandlers::filmList)
+                .andRoute(GET("films/p/{id}"), filmsHandlers::getPoster);
     }
 
     @Bean
