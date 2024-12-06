@@ -56,10 +56,7 @@ public class AccountHandlers {
                 .flatMap(users -> userRepository.findByName(users.getName())
                         .flatMap(existingUser -> ServerResponse.status(409).bodyValue("User already exists"))
                         .switchIfEmpty(
-                                userRepository.save(new Users(null,
-                                                users.getName(),
-                                                passwordEncoder.encode(users.getPassword()),
-                                                null))
+                                userRepository.save(users)
                                         .flatMap(savedUser -> ServerResponse.ok()
                                                 .bodyValue("User registered successfully"))
                         )
