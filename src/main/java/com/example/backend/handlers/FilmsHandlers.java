@@ -16,13 +16,10 @@ import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.io.File;
-import java.io.FileOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.List;
 import java.util.UUID;
 
 @Component
@@ -30,6 +27,7 @@ public class FilmsHandlers {
 
     @Autowired
     private FilmsService filmsService;
+
     public Mono<ServerResponse> curentFilm (ServerRequest request){
 
 
@@ -61,26 +59,18 @@ public class FilmsHandlers {
                 .body(Mono.just(resource), Resource.class);
     }
 
-    public Mono<ServerResponse> addFilmsDescrip (ServerRequest request){
-        return request.bodyToMono(Movies.class)
-                .flatMap(film -> filmsService.save(film)
-                        .flatMap(savedFilm -> ServerResponse.ok()
-                                .bodyValue("User registered successfully"))
-                );
-    }
-
     public Mono<ServerResponse> addFile (ServerRequest request){
     return request.multipartData().flatMap(parts -> {
         var fileName = UUID.randomUUID().toString();
         var title = ((FormFieldPart) parts.getFirst("title"));
-        var photoPart = parts.get("photo").get(0); // берём первый файл с ключом "photo"
-        var videoPart = parts.get("video").get(0); // берём первый файл с ключом "video"
+        var photoPart = parts.getFirst("photo"); // берём первый файл с ключом "photo"
+        var videoPart = parts.getFirst("video"); // берём первый файл с ключом "video"
 
         // Обрабатываем текст
         Mono<Void> saveOnBd = title.content()
                 .map(dataBuffer -> dataBuffer.toString(StandardCharsets.UTF_8))
                 .reduce(String::concat)
-                .flatMap(t -> filmsService.save(new Movies(null, t.toString(), fileName))
+                .flatMap(t -> filmsService.save(new Movies(null, t, fileName))
                         .then());
 
         // Сохраняем фото
