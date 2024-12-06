@@ -6,26 +6,32 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.reactive.function.server.*;
 
-import static org.springframework.web.reactive.function.server.RequestPredicates.GET;
-import static org.springframework.web.reactive.function.server.RequestPredicates.POST;
+import static org.springframework.web.reactive.function.server.RequestPredicates.*;
 
 @Configuration
 public class MainWebController {
 
     @Bean
     public RouterFunction<ServerResponse> filmRout(FilmsHandlers filmsHandlers){
+        RequestPredicate filmsPredicate = path("/films");
         return RouterFunctions
-                .route(GET("/films"), filmsHandlers::curentFilm)
-                .andRoute(GET("/films/filmList"), filmsHandlers::filmList)
-                .andRoute(GET("films/p/{id}"), filmsHandlers::getPoster)
-                .andRoute(POST("/upload"), filmsHandlers::addFile);
+                .nest(filmsPredicate,RouterFunctions
+                        .route(GET("/filmList"), filmsHandlers::filmList)
+                        .andRoute(GET("/p/{id}"), filmsHandlers::getPoster)
+                        .andRoute(POST("/upload"), filmsHandlers::addFile)
+                        .andRoute(GET("/v/{id}"), filmsHandlers::getFilm)
+                );
+
     }
 
     @Bean
     public RouterFunction<ServerResponse> AccRout(AccountHandlers accountHandlers){
+        RequestPredicate accPredicate = path("/acc");
         return RouterFunctions
-                .route(POST("/acc/login"), accountHandlers::login)
-                .andRoute(POST("/acc/reg"), accountHandlers::register)
-                .andRoute(POST("/acc/person"), accountHandlers::person);
+                .nest(accPredicate, RouterFunctions
+                        .route(POST("/login"), accountHandlers::login)
+                        .andRoute(POST("/reg"), accountHandlers::register)
+                        .andRoute(POST("/person"), accountHandlers::person)
+                );
     }
 }

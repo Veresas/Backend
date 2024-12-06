@@ -28,17 +28,6 @@ public class FilmsHandlers {
     @Autowired
     private FilmsService filmsService;
 
-    public Mono<ServerResponse> curentFilm (ServerRequest request){
-
-
-        Flux<Movies> filmsList = filmsService.findAllFilms();
-
-        return ServerResponse
-                .ok()
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(filmsList, Movies.class);
-    }
-
     public Mono<ServerResponse> filmList (ServerRequest request){
         return filmsService.findAllFilms()
                 .collectList()
@@ -55,7 +44,7 @@ public class FilmsHandlers {
         Resource resource = new FileSystemResource(posterPath.toFile());
         return ServerResponse.ok()
                 .contentType(MediaType.IMAGE_JPEG) // Или другой подходящий тип
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + posterPath + "\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + posterPath + "\"")
                 .body(Mono.just(resource), Resource.class);
     }
 
@@ -95,5 +84,20 @@ public class FilmsHandlers {
         return DataBufferUtils.write(dataBufferFlux, filePath, StandardOpenOption.CREATE, StandardOpenOption.WRITE)
                 .doOnError(e -> System.err.println("Error saving file: " + e.getMessage())) // Логируем ошибки
                 .then();
+    }
+
+    public Mono<ServerResponse> getFilm(ServerRequest request){
+        String filmId = request.pathVariable("id");
+        Path filePath = Path.of("./sources/films/", filmId,".mp4");
+        Resource resource = new FileSystemResource(filePath.toFile());
+
+        if (!resource.exists()) {
+            return ServerResponse.notFound().build();
+        }
+
+        return ServerResponse.ok()
+                .contentType(MediaType.APPLICATION_OCTET_STREAM) // Или другой подходящий тип
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filmId + ".mp4" + "\"")
+                .body(Mono.just(resource), Resource.class);
     }
 }
