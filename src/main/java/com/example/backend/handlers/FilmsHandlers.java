@@ -1,44 +1,61 @@
 package com.example.backend.handlers;
 
 import com.example.backend.models.Movies;
+
 import com.example.backend.services.FilmsService;
+import com.example.backend.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.*;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferUtils;
+import org.springframework.core.io.buffer.DefaultDataBufferFactory;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpRange;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.core.io.Resource;
 import org.springframework.http.codec.multipart.FormFieldPart;
 import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.List;
 import java.util.UUID;
 
 @Component
 public class FilmsHandlers {
 
-    @Autowired
     private FilmsService filmsService;
+    private UserService userService;
 
-    public Mono<ServerResponse> filmList (ServerRequest request){
-        return filmsService.findAllFilms()
-                .collectList()
-                .flatMap( films -> ServerResponse.ok()
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .bodyValue(films)
-                )
-                .switchIfEmpty(ServerResponse.notFound().build());
+    @Autowired
+    public FilmsHandlers(FilmsService filmsService, UserService userService){
+        this.filmsService = filmsService;
+        this.userService = userService;
     }
 
-    public Mono<ServerResponse> getPoster (ServerRequest request){
+    public Mono<ServerResponse> filmList(ServerRequest request) {
+        String userId = request.pathVariable("id");
+        return userService.findById(userId)
+                .flatMap(u -> filmsService.findAllFilmsById(u.getFilms())
+                        .collectList()
+                        .flatMap(films -> ServerResponse.ok()
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .bodyValue(films)
+                        )
+                        .switchIfEmpty(ServerResponse.notFound().build()));
+
+    }
+
+    public Mono<ServerResponse> getPoster(ServerRequest request) {
         String filmId = request.pathVariable("id");
         Path posterPath = Paths.get("./sources/posters", filmId);
         Resource resource = new FileSystemResource(posterPath.toFile());
@@ -48,37 +65,34 @@ public class FilmsHandlers {
                 .body(Mono.just(resource), Resource.class);
     }
 
-    public Mono<ServerResponse> addFile (ServerRequest request){
-    return request.multipartData().flatMap(parts -> {
-        var fileName = UUID.randomUUID().toString();
-        var title = ((FormFieldPart) parts.getFirst("title"));
-        var photoPart = parts.getFirst("photo"); // берём первый файл с ключом "photo"
-        var videoPart = parts.getFirst("video"); // берём первый файл с ключом "video"
+    public Mono<ServerResponse> addFile(ServerRequest request) {
+        return request.multipartData().flatMap(parts -> {
+            var fileName = UUID.randomUUID().toString();
+            var title = ((FormFieldPart) parts.getFirst("title")).value();
+            var photoPart = parts.getFirst("photo"); // берём первый файл с ключом "photo"
+            var videoPart = parts.getFirst("video"); // берём первый файл с ключом "video"
+            var idPart = parts.getFirst("id").toString();
+            if (idPart == null || idPart.isEmpty()) {
+                return Mono.error(new IllegalArgumentException("idPart is missing or empty"));
+            }
+            Mono<Void> saveOnBd = filmsService.save(new Movies(null, title, fileName))
+                    .flatMap(m -> userService.addFilmToUsers(idPart, m.getId().toString()));
 
-        // Обрабатываем текст
-        Mono<Void> saveOnBd = title.content()
-                .map(dataBuffer -> dataBuffer.toString(StandardCharsets.UTF_8))
-                .reduce(String::concat)
-                .flatMap(t -> filmsService.save(new Movies(null, t, fileName))
-                        .then());
+            Mono<Void> savePhoto = saveFile(photoPart.content(), fileName + ".jpg", true);
 
-        // Сохраняем фото
-        Mono<Void> savePhoto = saveFile(photoPart.content(), fileName + ".jpg", true);
+            Mono<Void> saveVideo = saveFile(videoPart.content(), fileName + ".mp4", false);
 
-        // Сохраняем видео
-        Mono<Void> saveVideo = saveFile(videoPart.content(), fileName + ".mp4", false);
-
-
-        return Mono.when(saveOnBd, savePhoto, saveVideo)
-                .then(ServerResponse.ok().bodyValue("Files uploaded successfully"));
-    });
+            return Mono.when(saveOnBd, savePhoto, saveVideo)
+                    .then(ServerResponse.ok().bodyValue("Files uploaded successfully"));
+        });
     }
 
     private Mono<Void> saveFile(Flux<DataBuffer> dataBufferFlux, String fileName, Boolean isPhoto) {
-        if(isPhoto){
+        if (isPhoto) {
             fileName = "./sources/posters/" + fileName;
         } else {
             fileName = "./sources/films/" + fileName;
+            System.out.println("Фильм распознан");
         }
         Path filePath = Paths.get(fileName);
         return DataBufferUtils.write(dataBufferFlux, filePath, StandardOpenOption.CREATE, StandardOpenOption.WRITE)
@@ -88,7 +102,7 @@ public class FilmsHandlers {
 
     public Mono<ServerResponse> getFilm(ServerRequest request){
         String filmId = request.pathVariable("id");
-        Path filePath = Path.of("./sources/films/", filmId,".mp4");
+        Path filePath = Path.of("./sources/films/", filmId);
         Resource resource = new FileSystemResource(filePath.toFile());
 
         if (!resource.exists()) {
@@ -99,5 +113,19 @@ public class FilmsHandlers {
                 .contentType(MediaType.APPLICATION_OCTET_STREAM) // Или другой подходящий тип
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filmId + ".mp4" + "\"")
                 .body(Mono.just(resource), Resource.class);
+    }
+
+    public Mono<ServerResponse> updateFilm(ServerRequest request) {
+        return request.bodyToMono(Movies.class)
+                .flatMap(film -> {
+                    filmsService.updateFilm(film);
+                    return ServerResponse.ok()
+                            .build();
+                });
+    }
+
+    public Mono<ServerResponse> delete(ServerRequest request){
+        return filmsService.deleteAll()
+                .flatMap(s -> ServerResponse.ok().build());
     }
 }

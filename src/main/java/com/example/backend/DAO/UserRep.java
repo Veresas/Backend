@@ -8,4 +8,5 @@ import reactor.core.publisher.Mono;
 public interface UserRep extends ReactiveMongoRepository<Users, ObjectId> {
 
     Mono<Users> findByName(String name);
+
 }
