@@ -4,7 +4,6 @@ import com.example.backend.models.Movies;
 import com.example.backend.models.Users;
 import com.example.backend.services.FilmsService;
 import com.example.backend.services.UserService;
-import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;

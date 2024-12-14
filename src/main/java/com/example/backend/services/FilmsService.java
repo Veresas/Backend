@@ -2,12 +2,9 @@ package com.example.backend.services;
 
 import com.example.backend.DAO.FilmRep;
 import com.example.backend.models.Movies;
-import com.example.backend.models.Users;
-import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
