@@ -5,6 +5,7 @@ import org.springframework.security.authentication.ReactiveAuthenticationManager
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
@@ -24,9 +25,13 @@ public class JwtAuthenticationManager implements ReactiveAuthenticationManager {
         String token = authentication.getCredentials().toString();
         if (jwtUtil.validateToken(token)) {
             String username = jwtUtil.extractUsername(token);
-            return Mono.just(new UsernamePasswordAuthenticationToken(username, null, List.of()));
+            String role = jwtUtil.extractRole(token);
+            List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()));
+            return Mono.just(new UsernamePasswordAuthenticationToken(username, null, authorities));
         } else {
             return Mono.empty();
         }
     }
+
+
 }

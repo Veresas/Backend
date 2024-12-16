@@ -61,14 +61,20 @@ public class FilmsHandlers {
         return request.multipartData().flatMap(parts -> {
             var fileName = UUID.randomUUID().toString();
             var title = ((FormFieldPart) parts.getFirst("title")).value();
-            var photoPart = parts.getFirst("photo"); // берём первый файл с ключом "photo"
-            var videoPart = parts.getFirst("video"); // берём первый файл с ключом "video"
-            var idPart = parts.getFirst("id").toString();
+            var photoPart = parts.getFirst("photo");
+            var videoPart = parts.getFirst("video");
+            var idPart = ((FormFieldPart) parts.getFirst("id")).value();
+
+
             if (idPart == null || idPart.isEmpty()) {
                 return Mono.error(new IllegalArgumentException("idPart is missing or empty"));
             }
             Mono<Void> saveOnBd = filmsService.save(new Movies(null, title, fileName))
-                    .flatMap(m -> userService.addFilmToUsers(idPart, m.getId().toString()));
+                    .flatMap(m -> {
+                        System.out.println("ID пользователя: " + idPart);
+                        return userService.addFilmToUsers(idPart, m.getId().toString());
+                    })
+                    .then();
 
             Mono<Void> savePhoto = saveFile(photoPart.content(), fileName + ".jpg", true);
 

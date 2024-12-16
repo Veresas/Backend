@@ -40,7 +40,7 @@ public class AccountHandlers {
                         userService.findByName(users.getName())
                                 .flatMap(user -> {
                                     if (passwordEncoder.matches(users.getPassword(), user.getPassword())) {
-                                        String token = jwtUtil.generateToken(user.getName());
+                                        String token = jwtUtil.generateToken(user.getName(), user.getRole());
                                         Map<String, String> responseBody = new HashMap<>();
                                         responseBody.put("token", token);
                                         responseBody.put("username", user.getId().toString());
@@ -63,6 +63,7 @@ public class AccountHandlers {
                 .flatMap(users -> {
                     String encodedPassword = passwordEncoder.encode(users.getPassword());
                     users.setPassword(encodedPassword);
+                    users.setRole("GUEST");
                     return userService.findByName(users.getName())
                             .flatMap(existingUser -> ServerResponse.status(409).bodyValue("User already exists"))
                             .switchIfEmpty(userService.save(users)
