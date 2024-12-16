@@ -20,6 +20,8 @@ import reactor.core.publisher.Mono;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 
 @Component
@@ -37,13 +39,19 @@ public class FilmsHandlers {
     public Mono<ServerResponse> filmList(ServerRequest request) {
         String userId = request.pathVariable("id");
         return userService.findById(userId)
-                .flatMap(u -> filmsService.findAllFilmsById(u.getFilms())
-                        .collectList()
-                        .flatMap(films -> ServerResponse.ok()
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .bodyValue(films)
-                        )
-                        .switchIfEmpty(ServerResponse.notFound().build()));
+                .flatMap(user -> {
+                    List<String> filmsIds = user.getFilms();
+                    if (filmsIds == null) {
+                        filmsIds = Collections.emptyList();
+                    }
+                    return filmsService.findAllFilmsById(filmsIds)
+                            .collectList()
+                            .flatMap(films -> ServerResponse.ok()
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .bodyValue(films))
+                            .switchIfEmpty(ServerResponse.notFound().build());
+                })
+                .switchIfEmpty(ServerResponse.notFound().build());
 
     }
 

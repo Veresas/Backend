@@ -10,7 +10,11 @@ import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.server.SecurityWebFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.reactive.CorsConfigurationSource;
+import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
+
+import java.util.List;
 
 @Configuration
 @EnableReactiveMethodSecurity
@@ -25,14 +29,14 @@ public class SecurityConfig{
     @Bean
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
         return http
-                .csrf(ServerHttpSecurity.CsrfSpec::disable) // Более краткий способ отключения CSRF
-                .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable) // Отключить HTTP Basic
-                .authenticationManager(jwtAuthenticationManager) // Настраиваем менеджер аутентификации
+                .csrf(ServerHttpSecurity.CsrfSpec::disable)
+                .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
+                .authenticationManager(jwtAuthenticationManager)
                 .securityContextRepository(new JwtSecurityContextRepository(jwtAuthenticationManager)) // Настраиваем репозиторий
                 .authorizeExchange(exchanges -> exchanges
                         .pathMatchers(HttpMethod.OPTIONS).permitAll()
-                        .pathMatchers("/", "/A/**", "/films").permitAll() // Разрешить доступ без аутентификации
-                        .pathMatchers("/adminqM/**","/films/upload").hasRole("ADMIN")
+                        .pathMatchers("/", "/A/**", "/films/**").permitAll() // Разрешить доступ без аутентификации
+                        .pathMatchers("/adminqM/**").hasRole("ADMIN")
                         .anyExchange().authenticated()
                 )
                 .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
