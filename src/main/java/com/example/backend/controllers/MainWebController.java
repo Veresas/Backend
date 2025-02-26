@@ -14,7 +14,7 @@ public class MainWebController {
 
     @Bean
     public RouterFunction<ServerResponse> filmRout(FilmsHandlers filmsHandlers){
-        RequestPredicate filmsPredicate = path("/films");
+                RequestPredicate filmsPredicate = path("/films");
         return RouterFunctions
                 .nest(filmsPredicate,RouterFunctions
                         .route(GET("/filmList/{id}"), filmsHandlers::filmList)

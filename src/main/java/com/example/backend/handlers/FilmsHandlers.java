@@ -4,12 +4,12 @@ import com.example.backend.models.Movies;
 
 import com.example.backend.services.FilmsService;
 import com.example.backend.services.UserService;
+import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.*;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferUtils;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
+import org.springframework.http.*;
 import org.springframework.http.codec.multipart.FormFieldPart;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.server.ServerRequest;
@@ -17,6 +17,8 @@ import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.io.IOException;
+import java.net.MalformedURLException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
@@ -58,7 +60,12 @@ public class FilmsHandlers {
     public Mono<ServerResponse> getPoster(ServerRequest request) {
         String filmId = request.pathVariable("id");
         Path posterPath = Paths.get("./sources/posters", filmId);
-        Resource resource = new FileSystemResource(posterPath.toFile());
+        Resource resource = null;
+        try {
+            resource = new UrlResource(posterPath.toUri());
+        } catch (MalformedURLException e) {
+            throw new RuntimeException(e);
+        }
         return ServerResponse.ok()
                 .contentType(MediaType.IMAGE_JPEG) // Или другой подходящий тип
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + posterPath + "\"")
@@ -106,19 +113,60 @@ public class FilmsHandlers {
                 .then();
     }
 
+    @SneakyThrows
     public Mono<ServerResponse> getFilm(ServerRequest request){
         String filmId = request.pathVariable("id");
         Path filePath = Path.of("./sources/films/", filmId);
-        Resource resource = new FileSystemResource(filePath.toFile());
+        Resource resource = new UrlResource(filePath.toUri());
 
         if (!resource.exists()) {
             return ServerResponse.notFound().build();
         }
 
-        return ServerResponse.ok()
+        return request.headers().header(HttpHeaders.RANGE).stream()
+                        .findFirst()
+                                .map(rageHeader -> {
+                                    long rangeStart = 0;
+                                    long rangeEnd = 0;
+                                    long rangeLength = 0;
+                                    String[] rangeParts = rageHeader.split("=");
+                                    if (rangeParts.length < 2) {
+                                        return ServerResponse.badRequest()
+                                                .bodyValue("Invalid Range header format");
+                                    }
+
+                                    String[] ranges = rangeParts[1].split("-");
+                                    if (ranges.length < 1) {
+                                        return ServerResponse.badRequest()
+                                                .bodyValue("Invalid Range header format");
+                                    }
+
+                                    rangeStart = Long.parseLong(ranges[0]);
+                                    try {
+                                        rangeEnd = ranges.length > 1 && !ranges[1].isEmpty()
+                                                ? Long.parseLong(ranges[1])
+                                                : resource.contentLength() - 1; // Если end не указан, используем конец файла
+                                    } catch (IOException e) {
+                                        throw new RuntimeException(e);
+                                    }
+                                    rangeLength = rangeEnd - rangeStart + 1;
+                                    try {
+                                        return ServerResponse.status(HttpStatus.PARTIAL_CONTENT)
+                                                .contentType(MediaTypeFactory.getMediaType(resource).orElse(MediaType.APPLICATION_OCTET_STREAM))
+                                                .header(HttpHeaders.CONTENT_RANGE, "bytes " + rangeStart + "-" + rangeEnd + "/" + resource.contentLength())
+                                                .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(rangeLength))
+                                                .body(Mono.just(resource), Resource.class);
+                                    } catch (IOException e) {
+                                        throw new RuntimeException(e);
+                                    }
+                                })
+                        .orElseGet(() -> ServerResponse.ok()
+                                            .contentType(MediaTypeFactory.getMediaType(resource).orElse(MediaType.APPLICATION_OCTET_STREAM))
+                                            .body(Mono.just(resource), Resource.class));
+                /*ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_OCTET_STREAM) // Или другой подходящий тип
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filmId + ".mp4" + "\"")
-                .body(Mono.just(resource), Resource.class);
+                .body(Mono.just(resource), Resource.class);*/
     }
 
     public Mono<ServerResponse> updateFilm(ServerRequest request) {
