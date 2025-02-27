@@ -20,7 +20,8 @@ public class MainWebController {
                         .route(GET("/filmList/{id}"), filmsHandlers::filmList)
                         .andRoute(GET("/p/{id}"), filmsHandlers::getPoster)
                         .andRoute(POST("/upload"), filmsHandlers::addFile)
-                        .andRoute(GET("/v/{id}"), filmsHandlers::getFilm)
+                        .andRoute(GET("/v/{id}/manifest.mpd"), filmsHandlers::getManifest)
+                        .andRoute(GET("/v/{id}/{segment}"), filmsHandlers::getSegment)
                         .andRoute(POST("/update"), filmsHandlers::updateFilm)
                 );
 

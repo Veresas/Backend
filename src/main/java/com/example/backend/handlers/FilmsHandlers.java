@@ -182,4 +182,35 @@ public class FilmsHandlers {
         return filmsService.deleteAll()
                 .flatMap(s -> ServerResponse.ok().build());
     }
+
+    @SneakyThrows
+    public Mono<ServerResponse> getManifest(ServerRequest request) {
+        String filmId = request.pathVariable("id");
+        Path manifestPath = Path.of("./sources/films/", filmId, "/manifest.mpd");
+        Resource resource = new UrlResource(manifestPath.toUri());
+
+        if (!resource.exists()) {
+            return ServerResponse.notFound().build();
+        }
+
+        return ServerResponse.ok()
+                .contentType(MediaType.parseMediaType("application/dash+xml")) // Правильный MIME-тип
+                .body(Mono.just(resource), Resource.class);
+    }
+
+    @SneakyThrows
+    public Mono<ServerResponse> getSegment(ServerRequest request) {
+        String filmId = request.pathVariable("id");
+        String segmentName = request.pathVariable("segment");
+        Path segmentPath = Path.of("./sources/films/", filmId,"/", segmentName);
+        Resource resource = new UrlResource(segmentPath.toUri());
+
+        if (!resource.exists()) {
+            return ServerResponse.notFound().build();
+        }
+
+        return ServerResponse.ok()
+                .contentType(MediaType.parseMediaType("video/mp4")) // MIME-тип для фрагментов
+                .body(Mono.just(resource), Resource.class);
+    }
 }
