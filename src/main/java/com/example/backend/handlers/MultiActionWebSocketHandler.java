@@ -4,9 +4,12 @@ import com.example.backend.services.VideoWSService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.netty.buffer.SlicedByteBuf;
+import org.reactivestreams.Publisher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.socket.WebSocketHandler;
+import org.springframework.web.reactive.socket.WebSocketMessage;
 import org.springframework.web.reactive.socket.WebSocketSession;
 import reactor.core.publisher.Mono;
 
@@ -30,48 +33,69 @@ public class MultiActionWebSocketHandler implements WebSocketHandler {
     @Override
     public Mono<Void> handle(WebSocketSession session) {
         String query = session.getHandshakeInfo().getUri().getQuery();
-        String roomId;
+        String roomId = extractRoomId(query); // Вынесено в отдельный метод
 
-        if (query.contains("roomId=")) {
-            try {
-                roomId = Arrays.stream(query.split("&"))
-                        .filter(param -> param.startsWith("roomId="))
-                        .map(param -> param.split("=")[1])
-                        .findFirst()
-                        .orElseThrow(() -> new IllegalArgumentException("roomId не найден"));
-            } catch (Exception e) {
-                return session.send(Mono.just(session.textMessage("Ошибка: неверный формат roomId")))
-                        .then(session.close());
-            }
-
-            rooms.computeIfAbsent(roomId, k -> ConcurrentHashMap.newKeySet()).add(session);
+        if (roomId == null) {
+            return session.send(Mono.just(session.textMessage("Ошибка: неверный roomId")))
+                    .then(session.close());
         }
+
+        rooms.computeIfAbsent(roomId, k -> ConcurrentHashMap.newKeySet()).add(session);
+
+        // Обработка закрытия соединения
+        session.closeStatus()
+                .doFinally(signal -> {
+                    System.out.println("Закрыли соединение");
+                    rooms.get(roomId).remove(session);
+                })
+                .subscribe();
 
         return session.send(
                 session.receive()
-                        .flatMap(message -> Mono.fromCallable(() -> objectMapper.readTree(message.getPayloadAsText()))
-                                .flatMap(json -> {
-                                    JsonNode actionNode = json.get("action");
-                                    if (actionNode == null || !actionNode.isTextual()) {
-                                        return Mono.just(session.textMessage("Отсутствует или неверное поле 'action'"));
-                                    }
-                                    String action = actionNode.asText();
-                                    switch (action) {
-                                        case "join":
-                                            return videoWS.joinRoom(session, json, rooms);
-                                        case "test":
-                                            return videoWS.echo(session, json);
-                                        default:
-                                            return Mono.just(session.textMessage("Неизвестное действие"));
-                                    }
-                                })
-                                .onErrorResume(e -> {
-                                    String errorMessage = (e instanceof JsonProcessingException)
-                                            ? "Неверный JSON: " + e.getMessage()
-                                            : "Внутренняя ошибка: " + e.getMessage();
-                                    return Mono.just(session.textMessage(errorMessage));
-                                })
-                        )
+                        .flatMap(message -> processMessage(session, message, roomId))
+                        .onErrorResume(e -> handleErrors(session, e))
         );
+    }
+
+    private String extractRoomId(String query) {
+        try {
+            return Arrays.stream(query.split("&"))
+                    .filter(param -> param.startsWith("roomId="))
+                    .map(param -> param.split("=")[1])
+                    .findFirst()
+                    .orElse(null);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private Publisher<WebSocketMessage> processMessage(
+            WebSocketSession session,
+            WebSocketMessage message, String roomId) {
+
+        try {
+            JsonNode json = objectMapper.readTree(message.getPayloadAsText());
+            String action = json.path("action").asText("");
+
+            switch (action) {
+                case "join":
+                    System.out.println(rooms);
+                    return videoWS.joinRoom(roomId, rooms, session)
+                            .then(Mono.empty());
+                case "leave":
+                    return videoWS.leaveRoom(roomId, rooms, session)
+                            .then(Mono.empty());
+                case "test":
+                    return videoWS.echo(session, json);
+                default:
+                    return Mono.just(session.textMessage("Неизвестное действие"));
+            }
+        } catch (JsonProcessingException e) {
+            return Mono.just(session.textMessage("Ошибка парсинга JSON"));
+        }
+    }
+
+    private Mono<WebSocketMessage> handleErrors(WebSocketSession session, Throwable e) {
+        return Mono.just(session.textMessage("Ошибка: " + e.getMessage()));
     }
 }
