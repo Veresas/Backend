@@ -35,7 +35,7 @@ public class SecurityConfig{
                 .securityContextRepository(new JwtSecurityContextRepository(jwtAuthenticationManager)) // Настраиваем репозиторий
                 .authorizeExchange(exchanges -> exchanges
                         .pathMatchers(HttpMethod.OPTIONS).permitAll()
-                        .pathMatchers("/", "/A/**", "/films/**").permitAll() // Разрешить доступ без аутентификации
+                        .pathMatchers("/", "/A/**", "/films/**", "/ws/**").permitAll() // Разрешить доступ без аутентификации
                         .pathMatchers("/adminqM/**").hasRole("ADMIN")
                         .anyExchange().authenticated()
                 )
