@@ -33,13 +33,14 @@ public class Rooms {
 
     private String inviteCode;
 
-    private ObjectId createdBy;
+    private String createdBy;
 
-    private Set<ObjectId> userIds = new ConcurrentSkipListSet<>();
+    private Set<String> userIds = new ConcurrentSkipListSet<>();
 
-    private Movies movie;
+    private String movieId;
 
     @CreatedDate
+    @Indexed(expireAfterSeconds = 43200) // 12 часов
     private Instant createdAt;
     private boolean isPublic;
 

@@ -33,7 +33,7 @@ public class MultiActionWebSocketHandler implements WebSocketHandler {
     @Override
     public Mono<Void> handle(WebSocketSession session) {
         String query = session.getHandshakeInfo().getUri().getQuery();
-        String roomId = extractRoomId(query); // Вынесено в отдельный метод
+        String roomId = extractRoomId(query);
 
         if (roomId == null) {
             return session.send(Mono.just(session.textMessage("Ошибка: неверный roomId")))
