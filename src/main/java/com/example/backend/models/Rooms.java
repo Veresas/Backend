@@ -43,6 +43,4 @@ public class Rooms {
     private Instant createdAt;
     private boolean isPublic;
 
-    @TimeToLive(unit = TimeUnit.SECONDS)
-    private Long ttl = 86400L;
 }
