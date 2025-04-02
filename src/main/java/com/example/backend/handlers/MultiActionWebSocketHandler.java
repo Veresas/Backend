@@ -45,7 +45,6 @@ public class MultiActionWebSocketHandler implements WebSocketHandler {
         // Обработка закрытия соединения
         session.closeStatus()
                 .doFinally(signal -> {
-                    System.out.println("Закрыли соединение");
                     rooms.get(roomId).remove(session);
                 })
                 .subscribe();
@@ -79,7 +78,6 @@ public class MultiActionWebSocketHandler implements WebSocketHandler {
 
             switch (action) {
                 case "join":
-                    System.out.println(rooms);
                     return videoWS.joinRoom(roomId, rooms, session)
                             .then(Mono.empty());
                 case "leave":

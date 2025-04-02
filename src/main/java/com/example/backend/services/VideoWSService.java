@@ -47,7 +47,6 @@ public class VideoWSService {
 
     public  Flux<WebSocketMessage> leaveRoom (String roomId, Map<String, Set<WebSocketSession>> rooms, WebSocketSession sender){
         Set<WebSocketSession> sessions = rooms.get(roomId);
-        System.out.print("Вошли в метод обрабт");
         String mes = "Пользователь вышел";
         return mailing(sessions, sender, mes)
                 .thenMany(Flux.empty());
