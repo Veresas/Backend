@@ -40,10 +40,10 @@ public class AccountHandlers {
                         userService.findByName(users.getName())
                                 .flatMap(user -> {
                                     if (passwordEncoder.matches(users.getPassword(), user.getPassword())) {
-                                        String token = jwtUtil.generateToken(user.getName(), user.getRole());
+                                        String token = jwtUtil.generateToken(user.getRole(), user.getId().toString());
                                         Map<String, String> responseBody = new HashMap<>();
                                         responseBody.put("token", token);
-                                        responseBody.put("username", user.getId().toString());
+                                        responseBody.put("userId", user.getId().toString());
                                         return ServerResponse.ok()
                                                 .contentType(MediaType.APPLICATION_JSON)
                                                 .body(BodyInserters.fromValue(responseBody));

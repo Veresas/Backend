@@ -23,6 +23,7 @@ public class MainWebController {
                         .andRoute(GET("/v/{id}/manifest.mpd"), filmsHandlers::getManifest)
                         .andRoute(GET("/v/{id}/{segment}"), filmsHandlers::getSegment)
                         .andRoute(POST("/update"), filmsHandlers::updateFilm)
+                        //.andRoute(GET("/createRoom"))
                 );
 
     }

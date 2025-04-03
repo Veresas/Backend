@@ -20,8 +20,8 @@ public class JwtUtil {
         this.key = Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
     }
 
-    public String generateToken(String username, String role) {
-        Claims claims = Jwts.claims().setSubject(username);
+    public String generateToken(String role, String userId) {
+        Claims claims = Jwts.claims().setSubject(userId);
         claims.put("role", role);
         return Jwts.builder()
                 .setClaims(claims)

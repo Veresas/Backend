@@ -157,4 +157,8 @@ public class FilmsHandlers {
                 .contentType(MediaType.parseMediaType("video/mp4")) // MIME-тип для фрагментов
                 .body(Mono.just(resource), Resource.class);
     }
+
+    /*public Mono<ServerResponse> createRoom(ServerRequest request){
+
+    }*/
 }

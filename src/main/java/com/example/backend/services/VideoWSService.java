@@ -1,5 +1,6 @@
 package com.example.backend.services;
 
+import com.example.backend.models.RoomInMemori;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.socket.WebSocketMessage;
@@ -8,20 +9,14 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 @Service
 public class VideoWSService {
 
-    public Flux<WebSocketMessage> joinRoom(String roomId, Map<String, Set<WebSocketSession>> rooms, WebSocketSession sender) {
+    public Flux<WebSocketMessage> joinRoom(RoomInMemori room, WebSocketSession sender) {
 
-        Set<WebSocketSession> sessions = rooms.get(roomId);
-
-        if (sessions == null) {
-            return Flux.just(sender.textMessage("Комната " + roomId + " не найдена"));
-        }
-
+        List<WebSocketSession> sessions = new ArrayList<>(room.getParticipants().values());
         String mes = "Пользователь примоединился";
         return mailing(sessions, sender, mes)
                 .thenMany(Flux.empty());
@@ -29,7 +24,7 @@ public class VideoWSService {
 
     }
 
-    private Mono<Void> mailing (Set<WebSocketSession> sessions, WebSocketSession sender, String mes ){
+    private Mono<Void> mailing (List<WebSocketSession> sessions, WebSocketSession sender, String mes ){
 
         return Flux.fromIterable(sessions)
                 .filter(recipient -> !recipient.equals(sender))
@@ -45,8 +40,8 @@ public class VideoWSService {
                 .then();
     }
 
-    public  Flux<WebSocketMessage> leaveRoom (String roomId, Map<String, Set<WebSocketSession>> rooms, WebSocketSession sender){
-        Set<WebSocketSession> sessions = rooms.get(roomId);
+    public  Flux<WebSocketMessage> leaveRoom (RoomInMemori room, WebSocketSession sender){
+        List<WebSocketSession> sessions = new ArrayList<>(room.getParticipants().values());
         String mes = "Пользователь вышел";
         return mailing(sessions, sender, mes)
                 .thenMany(Flux.empty());
