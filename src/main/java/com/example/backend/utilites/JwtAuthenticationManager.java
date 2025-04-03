@@ -24,10 +24,10 @@ public class JwtAuthenticationManager implements ReactiveAuthenticationManager {
     public Mono<Authentication> authenticate(Authentication authentication) throws AuthenticationException {
         String token = authentication.getCredentials().toString();
         if (jwtUtil.validateToken(token)) {
-            String username = jwtUtil.extractUsername(token);
+            String userId = jwtUtil.extractUserId(token);
             String role = jwtUtil.extractRole(token);
             List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()));
-            return Mono.just(new UsernamePasswordAuthenticationToken(username, null, authorities));
+            return Mono.just(new UsernamePasswordAuthenticationToken(userId, null, authorities));
         } else {
             return Mono.empty();
         }

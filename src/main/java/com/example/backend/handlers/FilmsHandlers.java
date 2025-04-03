@@ -2,7 +2,10 @@ package com.example.backend.handlers;
 
 import com.example.backend.models.Movies;
 
+import com.example.backend.models.RoomCreateRequest;
+import com.example.backend.models.Rooms;
 import com.example.backend.services.FilmsService;
+import com.example.backend.services.RoomsService;
 import com.example.backend.services.UserService;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,6 +14,7 @@ import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.*;
 import org.springframework.http.codec.multipart.FormFieldPart;
+import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
@@ -22,20 +26,25 @@ import java.net.MalformedURLException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 @Component
 public class FilmsHandlers {
 
     private FilmsService filmsService;
     private UserService userService;
+    private RoomsService roomsService;
 
     @Autowired
-    public FilmsHandlers(FilmsService filmsService, UserService userService){
+    public FilmsHandlers(FilmsService filmsService, UserService userService, RoomsService roomsService){
         this.filmsService = filmsService;
         this.userService = userService;
+        this.roomsService = roomsService;
     }
 
     public Mono<ServerResponse> filmList(ServerRequest request) {
@@ -158,7 +167,25 @@ public class FilmsHandlers {
                 .body(Mono.just(resource), Resource.class);
     }
 
-    /*public Mono<ServerResponse> createRoom(ServerRequest request){
+    public Mono<ServerResponse> createRoom(ServerRequest request){
+        return ReactiveSecurityContextHolder.getContext()
+                .flatMap(auth -> {
+                    String userId = auth.getAuthentication().getName();
 
-    }*/
+                    return request.bodyToMono(RoomCreateRequest.class)
+                            .flatMap(body -> {
+                                Rooms room = new Rooms(
+                                        null,
+                                        userId,
+                                        new ConcurrentSkipListSet<>(Set.of(userId)), // добавляем создателя в участники
+                                        body.getMovieId(),
+                                        Instant.now(),
+                                        body.isPublic()
+                                );
+                                return roomsService.createRoom(room)
+                                        .flatMap(savedRoom -> ServerResponse.ok().bodyValue(savedRoom.getId()));
+                            });
+
+                });
+    }
 }

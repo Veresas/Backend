@@ -34,7 +34,7 @@ public class RoomsService {
         return mongoTemplate.find(query, Rooms.class);
     }
 
-    public Mono<Rooms> saveRoom(Rooms rooms){
+    public Mono<Rooms> createRoom(Rooms rooms){
         return  roomsRep.save(rooms);
     }
 

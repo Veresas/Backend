@@ -26,7 +26,7 @@ public class AccountHandlers {
     private final UserService userService;
     private final JavaMailSender emailSender;
 
-    @Autowired // Добавлена аннотация @Autowired
+    @Autowired
     public AccountHandlers(UserService userService, JwtUtil jwtUtil, PasswordEncoder passwordEncoder, JavaMailSender emailSender) {
         this.userService = userService;
         this.jwtUtil = jwtUtil;
