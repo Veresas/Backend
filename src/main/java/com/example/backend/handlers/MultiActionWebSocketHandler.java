@@ -1,35 +1,34 @@
 package com.example.backend.handlers;
 
 import com.example.backend.models.RoomInMemori;
+import com.example.backend.services.RoomLifecycleService;
+import com.example.backend.services.RoomsService;
 import com.example.backend.services.VideoWSService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.netty.buffer.SlicedByteBuf;
+import lombok.RequiredArgsConstructor;
 import org.reactivestreams.Publisher;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.socket.WebSocketHandler;
 import org.springframework.web.reactive.socket.WebSocketMessage;
 import org.springframework.web.reactive.socket.WebSocketSession;
 import reactor.core.publisher.Mono;
 
-import java.time.Duration;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Component
+@RequiredArgsConstructor
 public class MultiActionWebSocketHandler implements WebSocketHandler {
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
     private final VideoWSService videoWS;
-    private final Map<String, RoomInMemori> rooms = new ConcurrentHashMap<>();
+    private final RoomLifecycleService roomLifecycleService;
+    private final RoomsService roomsService;
 
+    private final Map<String, RoomInMemori> activeRooms = new ConcurrentHashMap<>();
 
-    @Autowired
-    public MultiActionWebSocketHandler(VideoWSService videoWS) {
-            this.videoWS = videoWS;
-    }
 
     @Override
     public Mono<Void> handle(WebSocketSession session) {
@@ -42,34 +41,28 @@ public class MultiActionWebSocketHandler implements WebSocketHandler {
                     .then(session.close());
         }
 
-        session.getAttributes().put("userId", userId);
-        RoomInMemori room = rooms.computeIfAbsent(roomId, k -> new RoomInMemori(session));
-        room.addParticipant(userId, session);
-
-        return session.send(
-                session.receive()
-                        .flatMap(message -> processMessage(session, message, room))
+        return roomLifecycleService.markRoomActive(roomId, userId)
+                .then(Mono.fromRunnable(() -> {
+                    activeRooms.computeIfAbsent(roomId, k -> new RoomInMemori(session));
+                    RoomInMemori memRoom = activeRooms.get(roomId);
+                    memRoom.addParticipant(userId, session);
+                }))
+                .thenMany(session.receive()
+                        .flatMap(msg -> processMessage(session, msg, roomId))
                         .onErrorResume(e -> handleErrors(session, e))
-                        .doFinally(
-                                signal -> {
-                                    room.removeParticipant(userId);
-                                    if (!room.getParticipants().isEmpty() && room.isOwner(session)) {
-                                        // Владелец отключился, но есть другие участники
-                                        Mono.delay(Duration.ofSeconds(15))
-                                                .doOnNext(delay -> {
-                                                    if (!room.hasOwner()) {
-                                                        rooms.remove(roomId);
-                                                        System.out.println("Комната " + roomId + " удалена из-за отсутствия владельца");
-                                                    }
-                                                })
-                                                .subscribe();
-                                    } else if (room.getParticipants().isEmpty()) {
-                                        rooms.remove(roomId);
-                                        System.out.println("Комната " + roomId + " удалена, так как пуста");
-                                    }
-                                })
-        );
-
+                )
+                .then()
+                .doFinally(signal -> {
+                    RoomInMemori memRoom = activeRooms.get(roomId);
+                    if (memRoom != null) {
+                        memRoom.removeParticipant(userId);
+                        roomLifecycleService.removeUserAndPossiblyDeactivate(roomId, userId).subscribe();
+                        if (memRoom.getParticipants().isEmpty()) {
+                            activeRooms.remove(roomId);
+                        }
+                    }
+                    videoWS.leaveRoom(memRoom, session).subscribe();
+                });
     }
 
     private String extractParam(String query, String paramName) {
@@ -86,21 +79,36 @@ public class MultiActionWebSocketHandler implements WebSocketHandler {
 
     private Publisher<WebSocketMessage> processMessage(
             WebSocketSession session,
-            WebSocketMessage message, RoomInMemori room) {
+            WebSocketMessage message, String roomId) {
 
         try {
             JsonNode json = objectMapper.readTree(message.getPayloadAsText());
             String action = json.path("action").asText("");
-
+            RoomInMemori room = activeRooms.get(roomId);
             switch (action) {
                 case "join":
-                    return videoWS.joinRoom(room, session)
-                            .then(Mono.empty());
-                case "leave":
-                    return videoWS.leaveRoom(room, session)
-                            .then(Mono.empty());
-                case "test":
-                    return videoWS.echo(session, json);
+                    return roomsService.getFilmId(roomId)
+                            .flatMap(filmId -> {
+                                return videoWS.joinRoom(room, session, filmId)
+                                        .then(Mono.empty());
+                            });
+
+                case "pause":
+                    double pauseTime = json.path("time").asDouble(0);
+                    return videoWS.pause(room, session, pauseTime);
+
+                case "play":
+                    long startAt = json.path("startAt").asLong();
+                    double currentTime = room.getParticipants().get(session.getId()) != null
+                            ? room.getParticipants().get(session.getId()).getHandshakeInfo().getUri().getQuery().contains("userId") // just a presence check
+                            ? json.path("time").asDouble(0) : 0
+                            : 0;
+                    return videoWS.play(room, session, currentTime, startAt);
+
+                case "seek":
+                    double seekTime = json.path("time").asDouble(0);
+                    return videoWS.seek(room, session, seekTime);
+
                 default:
                     return Mono.just(session.textMessage("Неизвестное действие"));
             }

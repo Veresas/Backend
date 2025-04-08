@@ -174,16 +174,18 @@ public class FilmsHandlers {
 
                     return request.bodyToMono(RoomCreateRequest.class)
                             .flatMap(body -> {
-                                Rooms room = new Rooms(
-                                        null,
-                                        userId,
-                                        new ConcurrentSkipListSet<>(Set.of(userId)), // добавляем создателя в участники
-                                        body.getMovieId(),
-                                        Instant.now(),
-                                        body.isPublic()
-                                );
+                                String roomId = UUID.randomUUID().toString(); // Генерация внешнего ID комнаты
+
+                                Rooms room = new Rooms();
+                                room.setRoomId(roomId);
+                                room.setOwnerId(userId);
+                                room.setMovieId(body.getMovieId());
+                                room.setPublic(body.isPublic());
+                                room.addUser(userId);
+                                room.markUsed();
+
                                 return roomsService.createRoom(room)
-                                        .flatMap(savedRoom -> ServerResponse.ok().bodyValue(savedRoom.getId()));
+                                        .flatMap(savedRoom -> ServerResponse.ok().bodyValue(savedRoom.getRoomId()));
                             });
 
                 });

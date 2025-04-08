@@ -11,7 +11,7 @@ import java.util.Map;
 
 @Data
 public class RoomInMemori {
-    private WebSocketSession owner; // Владелец комнаты
+    private WebSocketSession owner;
     private Map<String, WebSocketSession> participants;
 
     public RoomInMemori(WebSocketSession owner) {

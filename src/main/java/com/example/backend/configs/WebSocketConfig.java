@@ -24,7 +24,7 @@ public class WebSocketConfig {
 
         SimpleUrlHandlerMapping mapping = new SimpleUrlHandlerMapping();
         mapping.setUrlMap(map);
-        mapping.setOrder(-1); // Высокий приоритет
+        mapping.setOrder(-1);
         return mapping;
     }
 

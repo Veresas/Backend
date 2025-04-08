@@ -75,23 +75,28 @@ public class RoomsService {
         return updateRoomById(roomId, updateData);
     }
 
+    public Mono<String> getFilmId(String roomId) {
+        return roomsRep.findByRoomId(roomId)
+                .map(Rooms::getMovieId);
+    }
+
     public Mono<Void> updateRoomById(String id, Map<String, Object> updateData){
         return mongoTemplate.findById(id, Rooms.class)
                 .flatMap(room -> {
                     if (updateData.containsKey("userIdsAdd")){
                         List<String> newUserIds = (List<String>) updateData.get("userIdsAdd");
-                        Set<String> existingUserIds = room.getUserIds();
+                        Set<String> existingUserIds = room.getUsers();
 
                         existingUserIds.addAll(newUserIds); // Добавляем новых пользователей
-                        room.setUserIds(existingUserIds);
+                        room.setUsers(existingUserIds);
                     }
 
                     if (updateData.containsKey("userIdsRemove")){
                         List<String> newUserIds = (List<String>) updateData.get("userIdsRemove");
-                        Set<String> existingUserIds = room.getUserIds();
+                        Set<String> existingUserIds = room.getUsers();
 
                         existingUserIds.removeAll(newUserIds); // Добавляем новых пользователей
-                        room.setUserIds(existingUserIds);
+                        room.setUsers(existingUserIds);
                     }
 
                     if (updateData.containsKey("movieId")){
@@ -99,7 +104,7 @@ public class RoomsService {
                     }
 
                     if (updateData.containsKey("ownerId")){
-                        room.setCreatedBy((String) updateData.get("ownerId"));
+                        room.setOwnerId((String) updateData.get("ownerId"));
                     }
 
                     return mongoTemplate.save(room).then();
