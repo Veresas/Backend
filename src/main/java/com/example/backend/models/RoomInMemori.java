@@ -13,6 +13,7 @@ import java.util.Map;
 public class RoomInMemori {
     private WebSocketSession owner;
     private Map<String, WebSocketSession> participants;
+    private double currientTime = 0.0;
 
     public RoomInMemori(WebSocketSession owner) {
         this.owner = owner;

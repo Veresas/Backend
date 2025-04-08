@@ -95,14 +95,12 @@ public class MultiActionWebSocketHandler implements WebSocketHandler {
 
                 case "pause":
                     double pauseTime = json.path("time").asDouble(0);
+                    room.setCurrientTime(pauseTime);
                     return videoWS.pause(room, session, pauseTime);
 
                 case "play":
                     long startAt = json.path("startAt").asLong();
-                    double currentTime = room.getParticipants().get(session.getId()) != null
-                            ? room.getParticipants().get(session.getId()).getHandshakeInfo().getUri().getQuery().contains("userId") // just a presence check
-                            ? json.path("time").asDouble(0) : 0
-                            : 0;
+                    double currentTime = room.getCurrientTime();
                     return videoWS.play(room, session, currentTime, startAt);
 
                 case "seek":
