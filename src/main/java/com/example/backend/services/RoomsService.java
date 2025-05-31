@@ -1,13 +1,10 @@
 package com.example.backend.services;
 
 import com.example.backend.DAO.RoomsRep;
-import com.example.backend.models.Movies;
 import com.example.backend.models.Rooms;
-import org.bson.types.ObjectId;
+
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -18,20 +15,20 @@ import java.util.*;
 public class RoomsService {
 
     private RoomsRep roomsRep;
-    private ReactiveMongoTemplate mongoTemplate;
+    private final DatabaseClient databaseClient;
 
     @Autowired
-    public RoomsService(RoomsRep roomsRep, ReactiveMongoTemplate mongoTemplate) {
+    public RoomsService(RoomsRep roomsRep, DatabaseClient databaseClient) {
         this.roomsRep = roomsRep;
-        this.mongoTemplate = mongoTemplate;
+        this.databaseClient = databaseClient;
     }
 
-    public Flux<Rooms> findAllRooms() { return roomsRep.findAll(); }
+    public Flux<Rooms> findAllRooms() {
+        return roomsRep.findAll();
+    }
 
-    public Flux<Rooms> findAllRoomsById(List<String> ids){
-        Query query = new Query();
-        query.addCriteria(Criteria.where("id").in(ids));
-        return mongoTemplate.find(query, Rooms.class);
+    public Flux<Rooms> findAllRoomsById(List<String> ids) {
+        return roomsRep.findAllById(ids.stream().map(UUID::fromString).toList());
     }
 
     public Mono<Rooms> createRoom(Rooms rooms){
@@ -43,71 +40,45 @@ public class RoomsService {
     }
 
     public Mono<Void> deleteRoomsById(List<String> ids) {
-        Query query = new Query();
-        query.addCriteria(Criteria.where("_id").in(ids)); // Указываем, что удаляем документы, где _id находится в списке ids
-        return mongoTemplate.remove(query, Rooms.class).then();
+        return roomsRep.deleteAllById(ids.stream().map(UUID::fromString).toList());
     }
 
-    public Mono<Void> addUsersInRooms(String roomId, List<String> userIds) {
-        Map<String, Object> updateData = new HashMap<>();
-        updateData.put("userIdsAdd", userIds);
-        return updateRoomById(roomId, updateData);
-    }
-
-    // Удаление пользователей из комнаты
-    public Mono<Void> removeUsersFromRooms(String roomId, List<String> userIds) {
-        Map<String, Object> updateData = new HashMap<>();
-        updateData.put("userIdsRemove", userIds);
-        return updateRoomById(roomId, updateData);
-    }
-
-    // Обновление фильма в комнате
     public Mono<Void> updateMovieInRoom(String roomId, String movieId) {
-        Map<String, Object> updateData = new HashMap<>();
-        updateData.put("movieId", movieId);
-        return updateRoomById(roomId, updateData);
+        return roomsRep.findById(roomId)
+                .flatMap(room -> {
+                    room.setMovieId(UUID.fromString(movieId));
+                    return roomsRep.save(room).then();
+                });
     }
 
-    // Обновление владельца комнаты
     public Mono<Void> updateOwnerInRoom(String roomId, String ownerId) {
-        Map<String, Object> updateData = new HashMap<>();
-        updateData.put("ownerId", ownerId);
-        return updateRoomById(roomId, updateData);
+        return roomsRep.findById(roomId)
+                .flatMap(room -> {
+                    room.setOwnerId(UUID.fromString(ownerId));
+                    return roomsRep.save(room).then();
+                });
     }
 
-    public Mono<String> getFilmId(String roomId) {
-        return roomsRep.findByRoomId(roomId)
+    public Mono<UUID> getFilmId(String roomId) {
+        return roomsRep.findById(roomId)
                 .map(Rooms::getMovieId);
     }
 
-    public Mono<Void> updateRoomById(String id, Map<String, Object> updateData){
-        return mongoTemplate.findById(id, Rooms.class)
+    public Mono<Void> updateRoomById(String id, Map<String, Object> updateData) {
+        return roomsRep.findById(UUID.fromString(id))
                 .flatMap(room -> {
-                    if (updateData.containsKey("userIdsAdd")){
-                        List<String> newUserIds = (List<String>) updateData.get("userIdsAdd");
-                        Set<String> existingUserIds = room.getUsers();
 
-                        existingUserIds.addAll(newUserIds); // Добавляем новых пользователей
-                        room.setUsers(existingUserIds);
+                    if (updateData.containsKey("movieId")) {
+                        room.setMovieId(UUID.fromString((String) updateData.get("movieId")));
                     }
 
-                    if (updateData.containsKey("userIdsRemove")){
-                        List<String> newUserIds = (List<String>) updateData.get("userIdsRemove");
-                        Set<String> existingUserIds = room.getUsers();
-
-                        existingUserIds.removeAll(newUserIds); // Добавляем новых пользователей
-                        room.setUsers(existingUserIds);
+                    if (updateData.containsKey("ownerId")) {
+                        room.setOwnerId(UUID.fromString((String) updateData.get("ownerId")));
                     }
 
-                    if (updateData.containsKey("movieId")){
-                        room.setMovieId((String) updateData.get("movieId"));
-                    }
-
-                    if (updateData.containsKey("ownerId")){
-                        room.setOwnerId((String) updateData.get("ownerId"));
-                    }
-
-                    return mongoTemplate.save(room).then();
+                    return roomsRep.save(room).then();
                 });
     }
+
+
 }

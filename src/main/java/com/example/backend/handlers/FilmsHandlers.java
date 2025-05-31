@@ -50,20 +50,28 @@ public class FilmsHandlers {
     public Mono<ServerResponse> filmList(ServerRequest request) {
         String userId = request.pathVariable("id");
         return userService.findById(userId)
-                .flatMap(user -> {
-                    List<String> filmsIds = user.getFilms();
-                    if (filmsIds == null) {
-                        filmsIds = Collections.emptyList();
-                    }
-                    return filmsService.findAllFilmsById(filmsIds)
-                            .collectList()
-                            .flatMap(films -> ServerResponse.ok()
-                                    .contentType(MediaType.APPLICATION_JSON)
-                                    .bodyValue(films))
-                            .switchIfEmpty(ServerResponse.notFound().build());
-                })
+                .flatMap(user -> filmsService.findAllFilmsByUserId(user.getId())
+                        .collectList()
+                        .flatMap(films -> ServerResponse.ok()
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .bodyValue(films))
+                        .switchIfEmpty(ServerResponse.notFound().build()))
                 .switchIfEmpty(ServerResponse.notFound().build());
+    }
 
+    public Mono<ServerResponse> filmListPublic(ServerRequest request) {
+        return filmsService.findAllFilmsIsPublic()
+                .collectList()
+                .flatMap(films -> {
+                    if (films.isEmpty()) {
+                        return ServerResponse.ok()
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .bodyValue(Collections.emptyList());
+                    }
+                    return ServerResponse.ok()
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .bodyValue(films);
+                });
     }
 
     public Mono<ServerResponse> getPoster(ServerRequest request) {
@@ -93,11 +101,7 @@ public class FilmsHandlers {
             if (idPart == null || idPart.isEmpty()) {
                 return Mono.error(new IllegalArgumentException("idPart is missing or empty"));
             }
-            Mono<Void> saveOnBd = filmsService.save(new Movies(null, title, fileName))
-                    .flatMap(m -> {
-                        System.out.println("ID пользователя: " + idPart);
-                        return userService.addFilmToUsers(idPart, m.getId().toString());
-                    })
+            Mono<Void> saveOnBd = filmsService.save(new Movies(null, title, fileName, UUID.fromString(idPart), false))
                     .then();
 
             Mono<Void> savePhoto = saveFile(photoPart.content(), fileName + ".jpg", true);
@@ -174,20 +178,18 @@ public class FilmsHandlers {
 
                     return request.bodyToMono(RoomCreateRequest.class)
                             .flatMap(body -> {
-                                String roomId = UUID.randomUUID().toString(); // Генерация внешнего ID комнаты
-
                                 Rooms room = new Rooms();
-                                room.setRoomId(roomId);
-                                room.setOwnerId(userId);
+                                room.setOwnerId(UUID.fromString(userId));
                                 room.setMovieId(body.getMovieId());
                                 room.setPublic(body.isPublic());
-                                room.addUser(userId);
                                 room.markUsed();
 
                                 return roomsService.createRoom(room)
-                                        .flatMap(savedRoom -> ServerResponse.ok().bodyValue(savedRoom.getRoomId()));
+                                        .flatMap(savedRoom -> ServerResponse.ok()
+                                                .contentType(MediaType.APPLICATION_JSON)
+                                                .bodyValue(Collections.singletonMap("room_id", savedRoom.getId())));
                             });
-
                 });
+
     }
 }

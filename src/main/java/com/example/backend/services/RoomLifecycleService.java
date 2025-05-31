@@ -12,30 +12,27 @@ public class RoomLifecycleService {
 
     private final RoomsRep roomsRep;
 
-    public Mono<Void> markRoomActive(String roomId, String userId) {
-        return roomsRep.findByRoomId(roomId)
+    public Mono<Void> markRoomActive(String roomId) {
+        return roomsRep.findById(roomId)
                 .doOnNext(room -> {
                     room.markUsed();
-                    room.addUser(userId);
                 })
                 .flatMap(roomsRep::save)
                 .then();
     }
 
-    public Mono<Void> removeUserAndPossiblyDeactivate(String roomId, String userId) {
-        return roomsRep.findByRoomId(roomId)
+
+    public Mono<Void> markRoomInActive(String roomId) {
+        return roomsRep.findById(roomId)
                 .doOnNext(room -> {
-                    room.removeUser(userId);
-                    if (room.isEmpty()) {
-                        room.markInactive();
-                    }
+                    room.markInactive();
                 })
                 .flatMap(roomsRep::save)
                 .then();
     }
 
     public Mono<Void> deactivateRoom(String roomId) {
-        return roomsRep.findByRoomId(roomId)
+        return roomsRep.findById(roomId)
                 .doOnNext(Rooms::markInactive)
                 .flatMap(roomsRep::save)
                 .then();

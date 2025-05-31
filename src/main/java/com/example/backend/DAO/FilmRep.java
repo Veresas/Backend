@@ -1,11 +1,11 @@
 package com.example.backend.DAO;
 
 import com.example.backend.models.Movies;
-import com.example.backend.models.Users;
-import org.bson.types.ObjectId;
-import org.springframework.data.mongodb.repository.ReactiveMongoRepository;
-import reactor.core.publisher.Mono;
+import org.springframework.data.r2dbc.repository.R2dbcRepository;
+import reactor.core.publisher.Flux;
 
-public interface FilmRep extends ReactiveMongoRepository<Movies, ObjectId> {
+import java.util.UUID;
 
+public interface FilmRep extends R2dbcRepository<Movies, UUID> {
+    Flux<Movies> findByIsPublic(boolean isPublic);
 }

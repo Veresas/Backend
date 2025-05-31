@@ -1,4 +1,4 @@
-package com.example.backend.configs;
+/*package com.example.backend.configs;
 
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
@@ -48,4 +48,4 @@ public class MongoConfig extends AbstractReactiveMongoConfiguration {
         return new ReactiveMongoTemplate(reactiveMongoClient(), getDatabaseName());
     }
 
-}
+}*/

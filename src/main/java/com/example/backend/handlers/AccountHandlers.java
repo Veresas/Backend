@@ -17,6 +17,7 @@ import reactor.core.publisher.Mono;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @Component
 public class AccountHandlers {
@@ -40,7 +41,7 @@ public class AccountHandlers {
                         userService.findByName(users.getName())
                                 .flatMap(user -> {
                                     if (passwordEncoder.matches(users.getPassword(), user.getPassword())) {
-                                        String token = jwtUtil.generateToken(user.getRole(), user.getId().toString());
+                                        String token = jwtUtil.generateToken(user.getRoleId().toString(), user.getId().toString());
                                         Map<String, String> responseBody = new HashMap<>();
                                         responseBody.put("token", token);
                                         responseBody.put("userId", user.getId().toString());
@@ -63,7 +64,7 @@ public class AccountHandlers {
                 .flatMap(users -> {
                     String encodedPassword = passwordEncoder.encode(users.getPassword());
                     users.setPassword(encodedPassword);
-                    users.setRole("GUEST");
+                    users.setRoleId(UUID.fromString("19e08e6f-bf54-42a7-9564-f2c7fc6473b8"));
                     return userService.findByName(users.getName())
                             .flatMap(existingUser -> ServerResponse.status(409).bodyValue("User already exists"))
                             .switchIfEmpty(userService.save(users)

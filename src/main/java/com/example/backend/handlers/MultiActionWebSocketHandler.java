@@ -41,7 +41,7 @@ public class MultiActionWebSocketHandler implements WebSocketHandler {
                     .then(session.close());
         }
 
-        return roomLifecycleService.markRoomActive(roomId, userId)
+        return roomLifecycleService.markRoomActive(roomId)
                 .then(Mono.fromRunnable(() -> {
                     activeRooms.computeIfAbsent(roomId, k -> new RoomInMemori(session));
                     RoomInMemori memRoom = activeRooms.get(roomId);
@@ -56,9 +56,9 @@ public class MultiActionWebSocketHandler implements WebSocketHandler {
                     RoomInMemori memRoom = activeRooms.get(roomId);
                     if (memRoom != null) {
                         memRoom.removeParticipant(userId);
-                        roomLifecycleService.removeUserAndPossiblyDeactivate(roomId, userId).subscribe();
                         if (memRoom.getParticipants().isEmpty()) {
                             activeRooms.remove(roomId);
+                            roomLifecycleService.markRoomInActive(roomId).subscribe();
                         }
                     }
                     videoWS.leaveRoom(memRoom, session).subscribe();
@@ -89,7 +89,7 @@ public class MultiActionWebSocketHandler implements WebSocketHandler {
                 case "join":
                     return roomsService.getFilmId(roomId)
                             .flatMap(filmId -> {
-                                return videoWS.joinRoom(room, session, filmId)
+                                return videoWS.joinRoom(room, session, filmId.toString())
                                         .then(Mono.empty());
                             });
 

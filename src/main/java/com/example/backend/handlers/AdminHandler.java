@@ -57,9 +57,4 @@ public class AdminHandler {
                         .bodyValue(s)
                 );
     }
-
-    public Mono<ServerResponse> test(ServerRequest request){
-        return userService.addFilmToUsers("674f1e44081bcc264cef8f89", "67581ae7198667236a527bca")
-                .flatMap(r -> ServerResponse.ok().build());
-    }
 }

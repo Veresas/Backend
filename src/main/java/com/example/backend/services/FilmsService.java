@@ -3,57 +3,63 @@ package com.example.backend.services;
 import com.example.backend.DAO.FilmRep;
 import com.example.backend.models.Movies;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
-import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import org.springframework.data.mongodb.core.query.Query;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class FilmsService {
 
     private FilmRep filmRep;
-    private ReactiveMongoTemplate mongoTemplate;
+    private final DatabaseClient databaseClient;
 
     @Autowired
-    public FilmsService(FilmRep filmRep, ReactiveMongoTemplate reactiveMongoTemplate){
+    public FilmsService(FilmRep filmRep, DatabaseClient databaseClient){
         this.filmRep = filmRep;
-        this.mongoTemplate = reactiveMongoTemplate;
+        this.databaseClient = databaseClient;
     }
-    public Flux<Movies> findAllFilms(){
+    public Flux<Movies> findAllFilms() {
         return filmRep.findAll();
     }
 
-    public Flux<Movies> findAllFilmsById(List<String> ids){
-        Query query = new Query();
-        query.addCriteria(Criteria.where("id").in(ids));
-        return mongoTemplate.find(query, Movies.class);
+    public Flux<Movies> findAllFilmsByUserId(UUID userId) {
+        return databaseClient.sql("Select * movies WHERE id = :userId")
+                .bind("userId", userId)
+                .fetch()
+                .all()
+                .map(row -> (UUID) row.get("id"))
+                .collectList()
+                .flatMapMany(filmRep::findAllById);
     }
 
-    public Mono<Movies> save(Movies movies){
-        return  filmRep.save(movies);
+    public Flux<Movies> findAllFilmsIsPublic() {
+        return filmRep.findByIsPublic(true);
     }
 
-    public Mono<Void> findByIdAndReplace(Movies movies){
-        Query query = new Query();
-        query.addCriteria(Criteria.where("_id").is(movies.getId()));
-        return mongoTemplate.replace(query,movies).then();
+    public Mono<Movies> save(Movies movies) {
+        return filmRep.save(movies);
+    }
+
+    public Mono<Void> findByIdAndReplace(Movies movies) {
+        return filmRep.findById(movies.getId())
+                .flatMap(existingFilm -> filmRep.save(movies))
+                .then();
     }
 
     public Mono<Void> updateFilm(Movies film) {
-        return mongoTemplate.findById(film.getId(), Movies.class)
+        return filmRep.findById(film.getId())
                 .flatMap(existingFilm -> {
                     existingFilm.setPoster(film.getPoster());
                     existingFilm.setTitle(film.getTitle());
-
-                    return mongoTemplate.save(existingFilm).then();
+                    return filmRep.save(existingFilm).then();
                 });
     }
 
-    public Mono<Void> deleteAll(){
-       return filmRep.deleteAll();
+    public Mono<Void> deleteAll() {
+        return filmRep.deleteAll();
     }
 }

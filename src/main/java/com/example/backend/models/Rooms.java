@@ -1,46 +1,45 @@
 package com.example.backend.models;
 
-import com.example.backend.utilites.ObjectIdDeserializer;
-import com.example.backend.utilites.ObjectIdSerializer;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.bson.types.ObjectId;
+
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.index.Indexed;
-import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
 
 
 import java.time.Instant;
-import java.util.Set;
-import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.UUID;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Document(collection = "rooms")
+@Table("rooms")
 public class Rooms {
 
     @Id
-    @JsonSerialize(using = ObjectIdSerializer.class)
-    @JsonDeserialize(using = ObjectIdDeserializer.class)
-    private ObjectId id;
+    @Column("id") // Можно не указывать, если имя совпадает
+    private UUID id;
 
-    @Indexed(unique = true)
-    private String roomId;
+    @Column("owner_id")
+    private UUID ownerId;
 
-    private String ownerId;
-    private Set<String> users = new ConcurrentSkipListSet<>();
+    @Column("movie_id")
+    private UUID movieId;
 
-    private String movieId;
+    @Column("is_active")
     private boolean isActive = true;
+
     @CreatedDate
-    @Indexed(expireAfterSeconds = 43200) // 12 часов
-    private Instant createdAt = Instant.now();;
+    @Column("created_at")
+    private Instant createdAt = Instant.now();
+
+    @Column("is_public")
     private boolean isPublic;
+
+    @Column("last_activity_at")
     private Instant lastActivityAt = Instant.now();
 
     public void markUsed() {
@@ -50,17 +49,5 @@ public class Rooms {
 
     public void markInactive() {
         this.isActive = false;
-    }
-
-    public void addUser(String userId) {
-        users.add(userId);
-    }
-
-    public void removeUser(String userId) {
-        users.remove(userId);
-    }
-
-    public boolean isEmpty() {
-        return users.isEmpty();
     }
 }

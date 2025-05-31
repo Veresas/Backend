@@ -9,35 +9,19 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.UUID;
-
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Table("roles")
 @Scope(scopeName = "request", proxyMode = ScopedProxyMode.TARGET_CLASS)
-@Table("movies")
-public class Movies {
+public class Roles {
 
     @Id
     @Column("id")
     private UUID id;
 
-    @Column("title")
-    private String title;
-
-    @Column("poster")
-    private String poster;
-
-    @Column("user_id")
-    private UUID userId;
-
-    @Column("is_public")
-    private Boolean isPublic;
-    //private String file;
-    //private double rating;
-    //private String description;
-    //private int releaseYear;
+    @Column("role_name")
+    private String role_name;
 }

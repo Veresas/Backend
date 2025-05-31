@@ -18,6 +18,7 @@ public class MainWebController {
         return RouterFunctions
                 .nest(filmsPredicate,RouterFunctions
                         .route(GET("/filmList/{id}"), filmsHandlers::filmList)
+                        .andRoute(GET("/publicList"), filmsHandlers::filmListPublic)
                         .andRoute(GET("/p/{id}"), filmsHandlers::getPoster)
                         .andRoute(POST("/upload"), filmsHandlers::addFile)
                         .andRoute(GET("/v/{id}/manifest.mpd"), filmsHandlers::getManifest)
@@ -61,7 +62,6 @@ public class MainWebController {
                                 .route(POST("/update"), adminHandler::replaceUsers)
                                 .andRoute(GET("/all"), adminHandler::allUsers)
                         )
-                        .andRoute(GET("/test"), adminHandler::test)
                 );
     }
 }
