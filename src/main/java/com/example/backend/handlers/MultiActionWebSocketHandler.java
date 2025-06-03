@@ -3,6 +3,7 @@ package com.example.backend.handlers;
 import com.example.backend.models.RoomInMemori;
 import com.example.backend.services.RoomLifecycleService;
 import com.example.backend.services.RoomsService;
+import com.example.backend.services.UserService;
 import com.example.backend.services.VideoWSService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -26,6 +27,7 @@ public class MultiActionWebSocketHandler implements WebSocketHandler {
     private final VideoWSService videoWS;
     private final RoomLifecycleService roomLifecycleService;
     private final RoomsService roomsService;
+    private final UserService userService;
 
     private final Map<String, RoomInMemori> activeRooms = new ConcurrentHashMap<>();
 
@@ -106,6 +108,13 @@ public class MultiActionWebSocketHandler implements WebSocketHandler {
                 case "seek":
                     double seekTime = json.path("time").asDouble(0);
                     return videoWS.seek(room, session, seekTime);
+
+                case "mes":
+                    JsonNode content = json.path("content");
+                    String userName = content.path("userName").asText();
+                    String mesText = content.path("mesText").asText();
+
+                    return videoWS.Mes(room, session, userName, mesText);
 
                 default:
                     return Mono.just(session.textMessage("Неизвестное действие"));

@@ -42,7 +42,8 @@ public class MainWebController {
                         .route(GET("/{id}"), accountHandlers::person)
                         .andRoute(POST("/update"), accountHandlers::updateUsers)
                 )
-                .andRoute(POST("/chek"), accountHandlers::chek);
+                .andRoute(POST("/chek"), accountHandlers::chek)
+                .andRoute(GET("/name"), accountHandlers::GetName);
     }
 
     @Bean

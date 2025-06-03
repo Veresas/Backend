@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -108,5 +109,17 @@ public class AccountHandlers {
     public Mono<ServerResponse> delete(ServerRequest request){
         return userService.deleteAll()
                 .flatMap(s -> ServerResponse.ok().build());
+    }
+
+    public Mono<ServerResponse> GetName(ServerRequest request){
+        return ReactiveSecurityContextHolder.getContext()
+                .flatMap(auth -> {
+                    String userId = auth.getAuthentication().getName();
+                    return userService.findById(userId)
+                            .flatMap(user -> {
+                                Map<String, String> responseBody = Map.of("userName", user.getName());
+                                return  ServerResponse.ok().bodyValue(responseBody);
+                            });
+                });
     }
 }

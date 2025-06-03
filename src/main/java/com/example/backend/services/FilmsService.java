@@ -1,6 +1,8 @@
 package com.example.backend.services;
 
 import com.example.backend.DAO.FilmRep;
+import com.example.backend.dto.MoviesInList;
+import com.example.backend.mappers.MoviesMapper;
 import com.example.backend.models.Movies;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.r2dbc.core.DatabaseClient;
@@ -26,18 +28,20 @@ public class FilmsService {
         return filmRep.findAll();
     }
 
-    public Flux<Movies> findAllFilmsByUserId(UUID userId) {
-        return databaseClient.sql("Select * movies WHERE id = :userId")
+    public Flux<MoviesInList> findAllFilmsByUserId(UUID userId) {
+        return databaseClient.sql("Select * from movies WHERE user_id = :userId")
                 .bind("userId", userId)
                 .fetch()
                 .all()
                 .map(row -> (UUID) row.get("id"))
                 .collectList()
-                .flatMapMany(filmRep::findAllById);
+                .flatMapMany(filmRep::findAllById)
+                .map(MoviesMapper::toDto);
     }
 
-    public Flux<Movies> findAllFilmsIsPublic() {
-        return filmRep.findByIsPublic(true);
+    public Flux<MoviesInList> findAllFilmsIsPublic() {
+        return filmRep.findByIsPublic(true)
+                .map(MoviesMapper::toDto);
     }
 
     public Mono<Movies> save(Movies movies) {

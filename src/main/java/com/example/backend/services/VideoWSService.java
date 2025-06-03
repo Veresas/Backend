@@ -81,6 +81,14 @@ public class VideoWSService {
         return mailing(sessions, sender, json).thenMany(Flux.empty());
     }
 
+    public Flux<WebSocketMessage> Mes(RoomInMemori room, WebSocketSession sender, String userName, String mesText){
+        String json = toJson("mes", mesText, Map.of(
+                "userName", userName
+        ));
+        List<WebSocketSession> sessions = new ArrayList<>(room.getParticipants().values());
+        return mailing(sessions, sender, json).thenMany(Flux.empty());
+    }
+
     private String toJson(String type, Object value, Map<String, Object> options) {
         Map<String, Object> msg = new HashMap<>();
         msg.put("type", type);
@@ -92,5 +100,7 @@ public class VideoWSService {
             return "{\"type\":\"error\",\"value\":\"serialization_failed\"}";
         }
     }
+
+
 }
 

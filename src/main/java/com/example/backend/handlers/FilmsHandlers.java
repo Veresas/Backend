@@ -175,7 +175,6 @@ public class FilmsHandlers {
         return ReactiveSecurityContextHolder.getContext()
                 .flatMap(auth -> {
                     String userId = auth.getAuthentication().getName();
-
                     return request.bodyToMono(RoomCreateRequest.class)
                             .flatMap(body -> {
                                 Rooms room = new Rooms();
